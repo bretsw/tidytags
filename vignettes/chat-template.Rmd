@@ -1,0 +1,101 @@
+---
+title: "NGSSchat on 2020-12-03"
+authors: Moderated by Elizabeth Dyer (MTSU) and TJ McKenna (BU)
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    toc: yes
+    toc_float: yes
+    df_print: paged
+params: null
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+```
+
+```{r}
+library(tidyverse)
+library(tidytags)
+
+# t <- read_tags("https://docs.google.com/spreadsheets/d/1iAdXk3Pk77u92GjYbpZ57j-UO1hUpzU8XuyTSK-Y4kM/edit?usp=sharing")
+# pdp <- pull_tweet_data(t)
+# pdp <- process_tweets(pdp)
+pdp <- read_rds("../pdp.rds")
+
+date <- "2020-12-03"
+time <- "21:00"
+
+my_datetime <- lubridate::ymd_hm(str_c(date, time)) + lubridate::hm("05:00")
+
+pd <- pdp %>%
+  filter(created_at >= my_datetime - lubridate::hm("00:05"),
+         created_at <= my_datetime + lubridate::hm("01:05"))
+```
+
+# Moderators
+
+Moderated by Elizabeth Dyer and TJ McKenna.
+
+# Number of tweets
+
+There were `r nrow(pd)` tweets.
+
+# Number of participants
+
+```{r}
+n_participants <- length(unique(pd$screen_name))
+```
+
+There were `r n_participants` participants.
+
+# Posts 
+
+```{r}
+pd %>% 
+  mutate(int_count = favorite_count + retweet_count) %>% 
+  arrange(desc(int_count)) %>% 
+  dplyr::select(screen_name, text, created_at, favorite_count, retweet_count) %>% 
+  knitr::kable()
+```
+
+# Plot of posts per minute
+
+```{r}
+pd %>%
+  mutate(rounded_time = lubridate::round_date(created_at, "minute")) %>%
+  count(rounded_time) %>%
+  ggplot(aes(x = rounded_time, y = n)) +
+  geom_point() +
+  geom_line() +
+  ylab("Posts Per Minute") +
+  xlab("Minute") +
+  scale_x_datetime(labels = NULL) +
+  ggtitle(str_c("#NGSSchat on ", date)) +
+  theme_bw()
+```
+
+# Posts by participants
+
+```{r}
+pd %>%
+  count(screen_name) %>%
+  arrange(desc(n)) %>% 
+  DT::datatable()
+```
+
+# Sociogram
+
+```{r}
+tg <- pd %>% 
+  create_edgelist() %>% 
+  tidygraph::as_tbl_graph() %>% 
+  dplyr::mutate(centrality = tidygraph::centrality_degree(mode = 'in'))
+
+ggraph::ggraph(tg, layout = 'kk') +
+  ggraph::geom_edge_arc(alpha = .2, width = .5, strength = .5, edge_colour = 'steelblue') +
+  ggraph::geom_node_point(alpha = .4, ggplot2::aes(size = centrality)) +
+  ggraph::geom_node_label(aes(label = name), size = 1.5) +
+  ggplot2::scale_size(range = c(1,10))
+```
