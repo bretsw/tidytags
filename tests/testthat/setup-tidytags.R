@@ -22,6 +22,10 @@ if (!nzchar(Sys.getenv('TWITTER_PAT'))) {
       access_secret = "fakeaccesssecret12345",
       set_renv = TRUE
     )
+    if (tolower(Sys.info()['sysname']) == "windows") {
+      rtweet:::load_tokens(file.path("C:", "Users","runneradmin","Documents", ".rtweet_token.rds"))
+    }
+
   } else {
     stop("No API key nor cassettes, tests cannot be run.",
          call. = FALSE)
@@ -37,3 +41,5 @@ invisible(vcr::vcr_configure(
     ),
    filter_request_headers = list(Authorization = "<<<not-my-bearer-token>>>")
 ))
+
+print(rtweet:::twitter_pat())
